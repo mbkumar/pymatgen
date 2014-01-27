@@ -8,7 +8,7 @@ i.e., objects that can be converted to a json representation. MSON stands for
 materials json.
 
 It also implements general JSON encoders and decoders for pymatgen. Only
-supports pymatgen object version >= 1.9.0.
+supports pymatgen objects version >= 1.9.0.
 
 Current support for all core objects that obey the to_dict/from_dict API,
 including Site, PeriodicSite, Structure, Specie, Dos, Lattice, etc. and all
@@ -17,15 +17,15 @@ objects are supported as well.
 
 .. note::
 
-    The decoder depends on finding a "module" and "class" key in the dict in
+    The decoder depends on finding a "@module" and "@class" key in the dict in
     order to decode the necessary python object. All to_dict properties must
     therefore have the module name and class embedded. In general, the
     PMGJSONEncoder will add these keys if they are not present, but for better
     long term stability, the easiest way is to add the following to any to_dict
     property::
 
-        d["module"] = self.__class__.__module__
-        d["class"] = self.__class__.__name__
+        d["@module"] = self.__class__.__module__
+        d["@class"] = self.__class__.__name__
 
 """
 
@@ -110,8 +110,7 @@ class PMGJSONEncoder(json.JSONEncoder):
         property, the default Python json encoder default method is called.
 
         Args:
-            o:
-                Python object.
+            o: Python object.
 
         Return:
             Python dict representation.
@@ -217,10 +216,9 @@ def pmg_load(filename, **kwargs):
     Loads a json file and deserialize it with PMGJSONDecoder.
 
     Args:
-        filename:
-            Filename of file to open. Can be gzipped or bzipped.
-        \*\*kwargs:
-            Any of the keyword arguments supported by the json.load method.
+        filename (str): Filename of file to open. Can be gzipped or bzipped.
+        \*\*kwargs: Any of the keyword arguments supported by the json.load
+            method.
 
     Returns:
         Deserialized pymatgen object. Note that these objects can be lists,
@@ -237,11 +235,9 @@ def pmg_dump(obj, filename, **kwargs):
     support the to_dict and from_dict MSONAble protocol.
 
     Args:
-        obj:
-            Object to dump.
-        filename:
-            Filename of file to open. Can be gzipped or bzipped.
-        \*\*kwargs:
-            Any of the keyword arguments supported by the json.load method.
+        obj (object): Object to dump.
+        filename (str): Filename of file to open. Can be gzipped or bzipped.
+        \*\*kwargs: Any of the keyword arguments supported by the json.load
+            method.
     """
     return json.dump(obj, zopen(filename, "w"), cls=PMGJSONEncoder, **kwargs)

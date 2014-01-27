@@ -6,8 +6,7 @@ import sys
 from pymatgen.analysis.defects.point_defects import *
 from pymatgen.core.structure import Structure
 from pymatgen.core.periodic_table import Element
-from pymatgen.io.cssrio import Cssr
-from pymatgen.util.io_utils import which
+from monty.os.path import which
 
 try:
     import zeo
@@ -66,7 +65,7 @@ class VacancyTest(unittest.TestCase):
 
     def test_enumerate_defectsites(self):
         """
-        The vacancy sites should be the lattice sites. 
+        The vacancy sites should be the lattice sites.
         And there should be only two unique vacancy sites for MgO.
         """
         uniq_sites = []
@@ -213,7 +212,7 @@ class InterstitialTest(unittest.TestCase):
             self.assertTrue(rad, float)
 
 
-@unittest.skipIf(not (gulp_present and zeo), "gulp not present.")
+@unittest.skipIf(not (gulp_present and zeo), "gulp or zeo not present.")
 class InterstitialAnalyzerTest(unittest.TestCase):
     def setUp(self):
         mgo_latt = [[4.212, 0, 0], [0, 4.212, 0], [0, 0, 4.212]]
