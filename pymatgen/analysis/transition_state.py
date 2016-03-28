@@ -131,17 +131,23 @@ class NEBAnalysis(object):
         plt = get_publication_quality_plot(12, 8)
         scale = 1 if not normalize_rxn_coordinate else 1 / self.r[-1]
         x = np.arange(0, np.max(self.r), 0.01)
-        y = self.spline(x) * 1000
-        plt.plot(self.r * scale, self.energies * 1000, 'ro',
+        #y = self.spline(x) * 1000
+        y = self.spline(x) 
+        #plt.plot(self.r * scale, self.energies * 1000, 'ro',
+        plt.plot(self.r * scale, self.energies, 'ro',
                  x * scale, y, 'k-', linewidth=2, markersize=10)
         plt.xlabel("Reaction coordinate")
-        plt.ylabel("Energy (meV)")
-        plt.ylim((np.min(y) - 10, np.max(y) * 1.02 + 20))
+        #plt.ylabel("Energy (meV)")
+        plt.ylabel("Energy (eV)")
+        #plt.ylim((np.min(y) - 10, np.max(y) * 1.02 + 20))
+        plt.ylim((np.min(y) - 0.1, np.max(y) * 1.02 + 0.2))
+        plt.xlim((-0.05, np.max(x*scale) + 0.05))
         if label_barrier:
             data = zip(x * scale, y)
             barrier = max(data, key=lambda d: d[1])
             plt.plot([0, barrier[0]], [barrier[1], barrier[1]], 'k--')
-            plt.annotate('%.0f meV' % barrier[1],
+            #plt.annotate('%.0f meV' % barrier[1],
+            plt.annotate('%.3f eV' % barrier[1],
                          xy=(barrier[0] / 2, barrier[1] * 1.02),
                          xytext=(barrier[0] / 2, barrier[1] * 1.02),
                          horizontalalignment='center')
