@@ -1,11 +1,8 @@
 Change log
 ==========
 
-v3.4.0
+v4.2.0
 ------
-* 10-100x speed up to Structure copying and Site init, which means many
-  functionality has seen signifcant speed improvement (e.g., structure
-  matching).
-* Convenience method Structure.matches now perform similarity matching
-  for Structures.
-* Bugfix for band gap determination.
+* Fix important bug in minimum image distance computation for very skewed cells.
+* Major refactoring of WulffShape code.
+* Misc bug fixes for elastic tensor and other codes.

@@ -16,7 +16,7 @@ __maintainer__ = "Shyue Ping Ong"
 __email__ = "shyuep@gmail.com"
 __date__ = "Mar 15, 2012"
 
-import unittest
+import unittest2 as unittest
 
 import numpy as np
 
@@ -152,8 +152,8 @@ class InsertSitesTransformationTest(unittest.TestCase):
                                           "O2-", "O2-", "O2-"], coords)
 
     def test_apply_transformation(self):
-        t = InsertSitesTransformation(["Fe", "Mn"], [[0.1, 0, 0],
-                                                     [0.1, 0.2, 0.2]])
+        t = InsertSitesTransformation(["Fe", "Mn"], [[0., 0.5, 0],
+                                                     [0.5, 0.2, 0.2]])
         s = t.apply_transformation(self.struct)
         self.assertEqual(s.formula, "Li4 Mn1 Fe1 O4")
         t = InsertSitesTransformation(["Fe", "Mn"], [[0.001, 0, 0],
@@ -163,7 +163,7 @@ class InsertSitesTransformationTest(unittest.TestCase):
 
     def test_to_from_dict(self):
         d = InsertSitesTransformation(["Fe", "Mn"],
-                                      [[0.1, 0, 0], [0.1, 0.2, 0.2]]).as_dict()
+                                      [[0.5, 0, 0], [0.1, 0.5, 0.2]]).as_dict()
         t = InsertSitesTransformation.from_dict(d)
         s = t.apply_transformation(self.struct)
         self.assertEqual(s.formula, "Li4 Mn1 Fe1 O4")

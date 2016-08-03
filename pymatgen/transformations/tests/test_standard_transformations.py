@@ -17,7 +17,7 @@ __date__ = "Sep 23, 2011"
 
 import os
 import random
-import unittest
+import unittest2 as unittest
 import json
 import six
 
@@ -199,7 +199,7 @@ class OxidationStateRemovalTransformationTest(unittest.TestCase):
 class PartialRemoveSpecieTransformationTest(unittest.TestCase):
 
     def test_apply_transformation(self):
-        t = PartialRemoveSpecieTransformation("Li+", 1.0 / 3, True)
+        t = PartialRemoveSpecieTransformation("Li+", 1.0 / 3, 3)
         coords = list()
         coords.append([0, 0, 0])
         coords.append([0.75, 0.75, 0.75])
@@ -343,7 +343,7 @@ class OrderDisorderedStructureTransformationTest(unittest.TestCase):
                                      {"Si4+": 0.5, "O2-": 0.25, "P5+": 0.25}],
                            coords)
         output = t.apply_transformation(struct, return_ranked_list=3)
-        self.assertAlmostEqual(output[0]['energy'], -216.42362404816419, 4)
+        self.assertAlmostEqual(output[0]['energy'], -234.57813667648315, 4)
 
 
 class PrimitiveCellTransformationTest(unittest.TestCase):
@@ -398,6 +398,32 @@ class PerturbStructureTransformationTest(unittest.TestCase):
         for i, site in enumerate(transformed_s):
             self.assertAlmostEqual(site.distance(struct[i]), 0.05)
 
+
+class DeformStructureTransformationTest(unittest.TestCase):
+
+    def test_apply_transformation(self):
+        t = DeformStructureTransformation([[ 1., 0., 0.],
+                                             [ 0., 1., 0.05],
+                                             [ 0., 0., 1.]])
+        coords = list()
+        coords.append([0, 0, 0])
+        coords.append([0.375, 0.375, 0.375])
+        coords.append([.5, .5, .5])
+        coords.append([0.875, 0.875, 0.875])
+        coords.append([0.125, 0.125, 0.125])
+        coords.append([0.25, 0.25, 0.25])
+        coords.append([0.625, 0.625, 0.625])
+        coords.append([0.75, 0.75, 0.75])
+
+        lattice = [[3.8401979337, 0.00, 0.00],
+                   [1.9200989668, 3.3257101909, 0.00],
+                   [0.00, -2.2171384943, 3.1355090603]]
+        struct = Structure(lattice, ["Li+", "Li+", "Li+", "Li+",
+                                     "O2-", "O2-", "O2-", "O2-"], coords)
+        transformed_s = t.apply_transformation(struct)
+        self.assertAlmostEqual(transformed_s.lattice.a,3.84019793)
+        self.assertAlmostEqual(transformed_s.lattice.b,3.84379750)
+        self.assertAlmostEqual(transformed_s.lattice.c,3.75022981)
 
 if __name__ == "__main__":
     unittest.main()

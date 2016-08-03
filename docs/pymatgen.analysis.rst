@@ -6,12 +6,14 @@ Subpackages
 
 .. toctree::
 
+    pymatgen.analysis.chemenv
     pymatgen.analysis.cost
     pymatgen.analysis.defects
     pymatgen.analysis.diffraction
     pymatgen.analysis.elasticity
     pymatgen.analysis.hhi
     pymatgen.analysis.pourbaix
+    pymatgen.analysis.tests
 
 Submodules
 ----------
@@ -40,6 +42,14 @@ pymatgen.analysis.energy_models module
     :undoc-members:
     :show-inheritance:
 
+pymatgen.analysis.eos module
+----------------------------
+
+.. automodule:: pymatgen.analysis.eos
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 pymatgen.analysis.ewald module
 ------------------------------
 
@@ -60,6 +70,22 @@ pymatgen.analysis.molecule_structure_comparator module
 ------------------------------------------------------
 
 .. automodule:: pymatgen.analysis.molecule_structure_comparator
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+pymatgen.analysis.nmr module
+----------------------------
+
+.. automodule:: pymatgen.analysis.nmr
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+pymatgen.analysis.piezo module
+------------------------------
+
+.. automodule:: pymatgen.analysis.piezo
     :members:
     :undoc-members:
     :show-inheritance:
@@ -108,6 +134,14 @@ pymatgen.analysis.transition_state module
 -----------------------------------------
 
 .. automodule:: pymatgen.analysis.transition_state
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+pymatgen.analysis.wulff module
+------------------------------
+
+.. automodule:: pymatgen.analysis.wulff
     :members:
     :undoc-members:
     :show-inheritance:

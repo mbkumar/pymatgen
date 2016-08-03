@@ -16,7 +16,7 @@ __maintainer__ = "Shyue Ping Ong"
 __email__ = "shyuep@gmail.com"
 __date__ = "Jun 9, 2012"
 
-import unittest
+import unittest2 as unittest
 import os
 
 from pymatgen.matproj.rest import MPRester, MPRestError
@@ -26,10 +26,12 @@ from pymatgen.entries.computed_entries import ComputedEntry
 from pymatgen.electronic_structure.dos import CompleteDos
 from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 from pymatgen.entries.compatibility import MaterialsProjectCompatibility
-from pymatgen.phasediagram.pdmaker import PhaseDiagram
-from pymatgen.phasediagram.pdanalyzer import PDAnalyzer
+from pymatgen.phasediagram.maker import PhaseDiagram
+from pymatgen.phasediagram.analyzer import PDAnalyzer
 from pymatgen.io.cif import CifParser
 
+
+import random
 
 test_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..",
                         'test_files')
@@ -227,6 +229,11 @@ class MPResterTest(unittest.TestCase):
     def test_get_reaction(self):
         rxn = self.rester.get_reaction(["Li", "O"], ["Li2O"])
         self.assertIn("Li2O", rxn["Experimental_references"])
+
+    def test_get_substrates(self):
+        substrate_data = self.rester.get_substrates('mp-123', 5, [1, 0, 0])
+        substrates = [sub_dict['sub_id'] for sub_dict in substrate_data]
+        self.assertIn("mp-2534", substrates)
 
     def test_parse_criteria(self):
         crit = MPRester.parse_criteria("mp-1234 Li-*")

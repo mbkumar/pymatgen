@@ -267,10 +267,25 @@ class IStructureTest(PymatgenTest):
                                     int_s[2].lattice.abc)
         self.assertArrayAlmostEqual(struct2.lattice.angles,
                                     int_s[2].lattice.angles)
-        int_angles = [(a + struct2.lattice.angles[i]) / 2
-                      for i, a in enumerate(struct.lattice.angles)]
+        int_angles = [110.3976469, 94.5359731, 64.5165856]
         self.assertArrayAlmostEqual(int_angles,
                                     int_s[1].lattice.angles)
+
+        # Assert that volume is monotonic
+        self.assertTrue(struct2.lattice.volume >= int_s[1].lattice.volume)
+        self.assertTrue(int_s[1].lattice.volume >= struct.lattice.volume)
+
+    def test_interpolate_lattice_rotation(self):
+        l1 = Lattice([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        l2 = Lattice([[-1.01, 0, 0], [0, -1.01, 0], [0, 0, 1]])
+        coords = [[0, 0, 0], [0.75, 0.5, 0.75]]
+        struct1 = IStructure(l1, ["Si"] * 2, coords)
+        struct2 = IStructure(l2, ["Si"] * 2, coords)
+        int_s = struct1.interpolate(struct2, 2, interpolate_lattices=True)
+
+        # Assert that volume is monotonic
+        self.assertTrue(struct2.lattice.volume >= int_s[1].lattice.volume)
+        self.assertTrue(int_s[1].lattice.volume >= struct1.lattice.volume)
 
     def test_get_primitive_structure(self):
         coords = [[0, 0, 0], [0.5, 0.5, 0], [0, 0.5, 0.5], [0.5, 0, 0.5]]
@@ -694,6 +709,31 @@ class StructureTest(PymatgenTest):
                          Composition({'Cl': 0.35, 'F': 0.25}))
         self.assertArrayAlmostEqual(s[1].frac_coords, [.5, .5, .5005])
 
+    def test_properties(self):
+        self.assertEqual(self.structure.num_sites, len(self.structure))
+        self.structure.make_supercell(2)
+        self.structure[1] = "C"
+        sites = list(self.structure.group_by_types())
+        self.assertEqual(sites[-1].specie.symbol, "C")
+        self.structure.add_oxidation_state_by_element({"Si": 4, "C": 2})
+        self.assertEqual(self.structure.charge, 62)
+
+    def test_init_error(self):
+        self.assertRaises(StructureError, Structure, Lattice.cubic(3), ["Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+    def test_from_sites(self):
+        self.structure.add_site_property("hello", [1, 2])
+        s = Structure.from_sites(self.structure, to_unit_cell=True)
+        self.assertEqual(s.site_properties["hello"][1], 2)
+
+    def test_magic(self):
+        s = Structure.from_sites(self.structure)
+        self.assertEqual(s, self.structure)
+        self.assertNotEqual(s, None)
+        s.apply_strain(0.5)
+        self.assertNotEqual(s, self.structure)
+        self.assertNotEqual(self.structure * 2, self.structure)
+
 
 class IMoleculeTest(PymatgenTest):
 
@@ -903,7 +943,7 @@ class MoleculeTest(PymatgenTest):
         self.assertEqual(mol.formula, "H3 C1 O1")
         mol.set_charge_and_spin(0)
         self.assertEqual(mol.spin_multiplicity, 2)
-        mol.append("N", [0.25, 0.25, 0.25])
+        mol.append("N", [1, 1, 1])
         self.assertEqual(mol.formula, "H3 C1 N1 O1")
         self.assertRaises(TypeError, dict, [(mol, 1)])
         mol.remove_sites([0, 1])
@@ -1008,5 +1048,5 @@ class MoleculeTest(PymatgenTest):
 
 
 if __name__ == '__main__':
-    import unittest
+    import unittest2 as unittest
     unittest.main()

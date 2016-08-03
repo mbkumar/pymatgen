@@ -3,6 +3,16 @@
 # Distributed under the terms of the MIT License.
 
 from __future__ import division, unicode_literals
+try:
+    # New Py>=3.5 import
+    from math import gcd
+except ImportError:
+    # Deprecated import from Py3.5 onwards.
+    from fractions import gcd
+import numpy as np
+from pymatgen.analysis.elasticity.strain import Deformation
+from pymatgen.core.surface import get_symmetrically_distinct_miller_indices
+from pymatgen.core.surface import SlabGenerator
 
 """
 This module provides classes to identify optimal substrates for film growth
@@ -16,11 +26,6 @@ __email__ = "shyamd@lbl.gov"
 __status__ = "Production"
 __date__ = "Feb, 2016"
 
-from fractions import gcd
-import numpy as np
-from pymatgen.analysis.elasticity.strain import Deformation
-from pymatgen.core.surface import get_symmetrically_distinct_miller_indices
-from pymatgen.core.surface import SlabGenerator
 
 
 class ZSLGenerator(object):
@@ -226,16 +231,16 @@ class ZSLGenerator(object):
         for f in film_millers:
             film_slab = SlabGenerator(self.film, f, 20, 15,
                                       primitive=False).get_slab()
-            film_vectors = reduce_vectors(film_slab.lattice_vectors()[0],
-                                               film_slab.lattice_vectors()[1])
+            film_vectors = reduce_vectors(film_slab.lattice.matrix[0],
+                                          film_slab.lattice.matrix[1])
             film_area = vec_area(*film_vectors)
 
             for s in substrate_millers:
                 substrate_slab = SlabGenerator(self.substrate, s, 20, 15,
                                                primitive=False).get_slab()
                 substrate_vectors = reduce_vectors(
-                    substrate_slab.lattice_vectors()[0],
-                    substrate_slab.lattice_vectors()[1])
+                    substrate_slab.lattice.matrix[0],
+                    substrate_slab.lattice.matrix[1])
                 substrate_area = vec_area(*substrate_vectors)
 
                 yield [film_area, substrate_area, film_vectors,
@@ -348,9 +353,9 @@ class SubstrateAnalyzer:
             substrate(Structure): conventional standard structure for the
                 substrate
             elasticity_tensor(ElasticTensor): elasticity tensor for the film
-            film_millers(array): film planes to consider in search as defined by
+            film_millers(array): film facets to consider in search as defined by
                 miller indicies
-            substrate_millers(array): substrate planes to consider in search as
+            substrate_millers(array): substrate facets to consider in search as
                 defined by miller indicies
             ground_state_energy(float): ground state energy for the film
             lowest(bool): only consider lowest matching area for each surface

@@ -1,6 +1,86 @@
 Change log
 ==========
 
+v4.2.0
+------
+* Fix important bug in minimum image distance computation for very skewed cells.
+* Major refactoring of WulffShape code.
+* Misc bug fixes for elastic tensor and other codes.
+
+v4.1.1
+------
+* Major refactoring of WulffShape and lammps support.
+
+v4.1.0
+------
+* Wulff shape generator and analysis.
+* Minor bug fixes.
+
+v4.0.2
+--------
+* Fix kpoint reciprocal density.
+
+v4.0.1
+------
+* Minor bug fix release.
+
+v4.0.0
+------
+* Massive update with many deprecated methods removed. Note that this
+  may break backwards incompatibility!
+* Support for ABINIT 8.
+* Improved sulfide compatibility.
+
+v3.7.1
+------
+* Fix deprecation bug.
+
+v3.7.0
+------
+* Last version before pymatgen 4.0, where deprecated modules will be removed!
+* Massive update to LAMMPS (Kiran Matthews).
+* New input sets with a different interface that replaces old input sets.
+* Massive update to elastic properties.
+
+v3.6.1
+------
+* Massive cleanup to Boltztrap interface (Anubhav Jain)
+* Refactor of piezoelectric analysis to use tensor base class (Joey)
+* More robust CIF parsing.
+
+v3.6.0
+------
+* Pymatgen now uses spglib directly from Togo's website. Spglib is no longer
+  bundled as a dependency.
+* Improved support for velocities in Poscar (Germaine Vallverdu)
+* Backwards incompatible change in Born charge format in Outcar.
+* Fixes for Lammps input serialization
+
+v3.5.3
+------
+* Misc refactorings and bug fixes, especially for Outcar and Boltztrap classes.
+
+v3.5.2
+------
+* Minor update to DerivedInputSet interface.
+
+v3.5.1
+------
+* New derived input sets for generating inputs that depende on previuos
+  calculations. Old input sets deprecated.
+
+v3.5.0
+------
+* Chemical environment analysis package (David Waroquiers).
+* Piezoelectric property analysis (Shayam).
+* Cythonize certain expensive core functions. 5-10x speedup in large structure matching (Will Richards).
+* New NMR parsing functionality for Outcar (Xiaohui Qu).
+* Improved io.lammps (Kiran Mathews).
+* Update to spglib 1.9.2.
+* Element properties now return unitized float where possible.
+* Bug fix for get_primitive_standard affecting rhombohedral cells (important for band structures).
+* Vasprun.final_energy now returns corrected energy with warning if it is different from final electronic step.
+
 v3.4.0
 ------
 * 10-100x speed up to Structure copying and Site init, which means many

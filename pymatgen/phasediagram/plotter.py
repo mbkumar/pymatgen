@@ -22,7 +22,7 @@ import math
 import numpy as np
 import itertools
 
-from pymatgen.phasediagram.pdanalyzer import PDAnalyzer
+from pymatgen.phasediagram.analyzer import PDAnalyzer
 from pymatgen.util.string_utils import latexify
 from pymatgen.util.plotting_utils import get_publication_quality_plot
 from pymatgen.util.coord_utils import in_coord_list
@@ -120,14 +120,15 @@ class PDPlotter(object):
 
         return plt
 
-    def show(self, label_stable=True, label_unstable=True, ordering=None,
-             energy_colormap=None, process_attributes=False):
+    def show(self, *args, **kwargs):
         """
         Draws the phase diagram using Matplotlib and show it.
+
+        Args:
+            \*args: Passed to get_plot.
+            \*\*kwargs: Passed to get_plot.
         """
-        self.get_plot(label_stable=label_stable, label_unstable=label_unstable,
-                      ordering=ordering, energy_colormap=energy_colormap,
-                      process_attributes=process_attributes).show()
+        self.get_plot(*args, **kwargs).show()
 
     def _get_2d_plot(self, label_stable=True, label_unstable=True,
                      ordering=None, energy_colormap=None, vmin_mev=-60.0,
@@ -303,8 +304,8 @@ class PDPlotter(object):
                 'meV/at] above hull (in green)',
                 rotation=-90, ha='left', va='center')
             ticks = cbar.ax.get_yticklabels()
-            cbar.ax.set_yticklabels(['${v}$'.format(
-                v=float(t.get_text().strip('$'))*1000.0) for t in ticks])
+            # cbar.ax.set_yticklabels(['${v}$'.format(
+            #     v=float(t.get_text().strip('$'))*1000.0) for t in ticks])
         f = plt.gcf()
         f.set_size_inches((8, 6))
         plt.subplots_adjust(left=0.09, right=0.98, top=0.98, bottom=0.07)

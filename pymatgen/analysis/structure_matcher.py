@@ -20,10 +20,11 @@ from monty.json import MSONable
 from pymatgen.core.structure import Structure
 from pymatgen.core.lattice import Lattice
 from pymatgen.core.composition import Composition
+
 from pymatgen.core.periodic_table import get_el_sp
 from pymatgen.optimization.linear_assignment import LinearAssignment
-from pymatgen.util.coord_utils import pbc_shortest_vectors, \
-    lattice_points_in_supercell, is_coord_subset_pbc
+from pymatgen.util.coord_utils_cython import pbc_shortest_vectors, is_coord_subset_pbc
+from pymatgen.util.coord_utils import lattice_points_in_supercell
 
 __author__ = "William Davidson Richards, Stephen Dacek, Shyue Ping Ong"
 __copyright__ = "Copyright 2011, The Materials Project"
@@ -452,7 +453,7 @@ class StructureMatcher(MSONable):
 
         return is_coord_subset_pbc(s2, s1, frac_tol, mask)
 
-    def _cart_dists(self, s1, s2, avg_lattice, mask, normalization):
+    def _cart_dists(self, s1, s2, avg_lattice, mask, normalization, lll_frac_tol=None):
         """
         Finds a matching in cartesian space. Finds an additional
         fractional translation vector to minimize RMS distance
@@ -474,11 +475,9 @@ class StructureMatcher(MSONable):
         if mask.shape != (len(s2), len(s1)):
             raise ValueError("mask has incorrect shape")
 
-        mask_val = 1e10 * self.stol / normalization
         #vectors are from s2 to s1
-        vecs = pbc_shortest_vectors(avg_lattice, s2, s1)
-        vecs[mask] = mask_val
-        d_2 = np.sum(vecs ** 2, axis=-1)
+        vecs, d_2 = pbc_shortest_vectors(avg_lattice, s2, s1, mask, return_d2=True,
+                                         lll_frac_tol=lll_frac_tol)
         lin = LinearAssignment(d_2)
         s = lin.solution
         short_vecs = vecs[np.arange(len(s)), s]
@@ -526,7 +525,7 @@ class StructureMatcher(MSONable):
         if s1_supercell:
             # remove the symmetrically equivalent s1 indices
             inds = inds[::fu]
-        return mask, inds, i
+        return np.array(mask, dtype=np.int_), inds, i
 
     def fit(self, struct1, struct2):
         """
@@ -683,8 +682,10 @@ class StructureMatcher(MSONable):
                 t = s1fc[s1i] - s2fc[s2_t_ind]
                 t_s2fc = s2fc + t
                 if self._cmp_fstruct(s1fc, t_s2fc, frac_tol, mask):
+                    inv_lll_abc = np.array(avg_l.get_lll_reduced_lattice().reciprocal_lattice.abc)
+                    lll_frac_tol = inv_lll_abc * self.stol / (np.pi * normalization)
                     dist, t_adj, mapping = self._cart_dists(
-                        s1fc, t_s2fc, avg_l, mask, normalization)
+                        s1fc, t_s2fc, avg_l, mask, normalization, lll_frac_tol)
                     if use_rms:
                         val = np.linalg.norm(dist) / len(dist) ** 0.5
                     else:
@@ -875,7 +876,8 @@ class StructureMatcher(MSONable):
                     best = m[0]
             return best
 
-    def get_all_anonymous_mappings(self, struct1, struct2):
+    def get_all_anonymous_mappings(self, struct1, struct2, niggli=True,
+                                   include_dist=False):
         """
         Performs an anonymous fitting, which allows distinct species in one
         structure to map to another. Returns a dictionary of species
@@ -884,20 +886,25 @@ class StructureMatcher(MSONable):
         Args:
             struct1 (Structure): 1st structure
             struct2 (Structure): 2nd structure
+            niggli (bool): Find niggli cell in preprocessing
+            include_dist (bool): Return the maximin distance with each mapping
 
         Returns:
             list of species mappings that map struct1 to struct2.
         """
         struct1, struct2 = self._process_species([struct1, struct2])
-        struct1, struct2, fu, s1_supercell = self._preprocess(struct1, struct2)
+        struct1, struct2, fu, s1_supercell = self._preprocess(struct1, struct2,
+                                                              niggli)
 
         matches = self._anonymous_match(struct1, struct2, fu, s1_supercell,
-                                        break_on_match=True)
-
+                                        break_on_match=not include_dist)
         if matches:
-            return [m[0] for m in matches]
+            if include_dist:
+                return [(m[0], m[1][0]) for m in matches]
+            else:
+                return [m[0] for m in matches]
 
-    def fit_anonymous(self, struct1, struct2):
+    def fit_anonymous(self, struct1, struct2, niggli=True):
         """
         Performs an anonymous fitting, which allows distinct species in one
         structure to map to another. E.g., to compare if the Li2O and Na2O
@@ -911,7 +918,8 @@ class StructureMatcher(MSONable):
             True/False: Whether a species mapping can map struct1 to stuct2
         """
         struct1, struct2 = self._process_species([struct1, struct2])
-        struct1, struct2, fu, s1_supercell = self._preprocess(struct1, struct2)
+        struct1, struct2, fu, s1_supercell = self._preprocess(struct1, struct2,
+                                                              niggli)
 
         matches = self._anonymous_match(struct1, struct2, fu, s1_supercell,
                                         break_on_match=True, single_match=True)

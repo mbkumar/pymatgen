@@ -16,14 +16,9 @@ __maintainer__ = "Shyue Ping Ong"
 __email__ = "shyuep@gmail.com"
 __date__ = "Apr 25, 2012"
 
-import numpy as np
+import random
 from pymatgen.core.lattice import Lattice
-from pymatgen.util.coord_utils import get_linear_interpolated_value,\
-    in_coord_list, is_coord_subset, pbc_diff, in_coord_list_pbc,\
-    find_in_coord_list, find_in_coord_list_pbc,\
-    barycentric_coords, pbc_shortest_vectors,\
-    lattice_points_in_supercell, coord_list_mapping, all_distances,\
-    is_coord_subset_pbc, coord_list_mapping_pbc, Simplex
+from pymatgen.util.coord_utils import *
 from pymatgen.util.testing import PymatgenTest
 
 
@@ -75,13 +70,12 @@ class CoordUtilsTest(PymatgenTest):
         a = np.array([c1, c3, c2])
         b = np.array([c4, c2, c1])
 
-        inds =  coord_list_mapping_pbc(a, b)
+        inds = coord_list_mapping_pbc(a, b)
         diff = a - b[inds]
         diff -= np.round(diff)
         self.assertTrue(np.allclose(diff, 0))
-
-        self.assertRaises(Exception, coord_list_mapping, [c1,c2], [c2,c3])
-        self.assertRaises(Exception, coord_list_mapping, [c2], [c2,c2])
+        self.assertRaises(Exception, coord_list_mapping_pbc, [c1,c2], [c2,c3])
+        self.assertRaises(Exception, coord_list_mapping_pbc, [c2], [c2,c2])
 
     def test_find_in_coord_list(self):
         coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
@@ -159,6 +153,9 @@ class CoordUtilsTest(PymatgenTest):
         mask2 = [[True, False]]
         self.assertTrue(is_coord_subset_pbc([c1], [c2, c1], mask=mask2))
         self.assertFalse(is_coord_subset_pbc([c1], [c1, c2], mask=mask2))
+        mask3 = [[False, True]]
+        self.assertFalse(is_coord_subset_pbc([c1], [c2, c1], mask=mask3))
+        self.assertTrue(is_coord_subset_pbc([c1], [c1, c2], mask=mask3))
 
 
     def test_lattice_points_in_supercell(self):
@@ -223,6 +220,12 @@ class CoordUtilsTest(PymatgenTest):
 
         coord_utils.LOOP_THRESHOLD = prev_threshold
 
+    def test_get_angle(self):
+        v1 = (1, 0, 0)
+        v2 = (1, 1, 1)
+        self.assertAlmostEqual(get_angle(v1, v2), 54.7356103172)
+        self.assertAlmostEqual(get_angle(v1, v2, units="radians"),
+                               0.9553166181245092)
 
 class SimplexTest(PymatgenTest):
 
@@ -233,6 +236,11 @@ class SimplexTest(PymatgenTest):
         coords.append([0, 0, 1])
         coords.append([1, 0, 0])
         self.simplex = Simplex(coords)
+
+    def test_equal(self):
+        c2 = list(self.simplex.coords)
+        random.shuffle(c2)
+        self.assertEqual(Simplex(c2), self.simplex)
 
     def test_in_simplex(self):
         self.assertTrue(self.simplex.in_simplex([0.1, 0.1, 0.1]))
@@ -256,7 +264,11 @@ class SimplexTest(PymatgenTest):
         # Should be value of a right tetrahedron.
         self.assertAlmostEqual(self.simplex.volume, 1/6)
 
+    def test_str(self):
+        self.assertTrue(str(self.simplex).startswith("3-simplex in 4D space"))
+        self.assertTrue(repr(self.simplex).startswith("3-simplex in 4D space"))
+
 
 if __name__ == "__main__":
-    import unittest
+    import unittest2 as unittest
     unittest.main()

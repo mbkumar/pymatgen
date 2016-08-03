@@ -2,7 +2,18 @@
 # Copyright (c) Pymatgen Development Team.
 # Distributed under the terms of the MIT License.
 
-from __future__ import division, unicode_literals
+from __future__ import division, unicode_literals, print_function
+
+import os
+import re
+import json
+from io import open
+from enum import Enum
+
+from pymatgen.core.units import Mass, Length, unitized, FloatWithUnit, Unit, \
+    SUPPORTED_UNIT_NAMES
+from pymatgen.util.string_utils import formula_double_format
+from monty.json import MSONable
 
 """
 Module contains classes presenting Element and Specie (Element + oxidation
@@ -18,16 +29,6 @@ __email__ = "shyuep@gmail.com"
 __status__ = "Production"
 __date__ = "Sep 23, 2011"
 
-import os
-import re
-import json
-from io import open
-from enum import Enum
-
-from pymatgen.core.units import Mass, Length, unitized
-from pymatgen.util.string_utils import formula_double_format
-from monty.json import MSONable
-from monty.dev import deprecated
 
 # Loads element data from json file
 with open(os.path.join(os.path.dirname(__file__), "periodic_table.json"), "rt"
@@ -393,6 +394,35 @@ class Element(Enum):
             val = d.get(kstr, None)
             if str(val).startswith("no data"):
                 val = None
+            else:
+                try:
+                    val = float(val)
+                except ValueError:
+                    toks_nobracket = re.sub(r'\(.*\)', "", val)
+                    toks = toks_nobracket.replace("about", "").strip().split(" ", 1)
+                    if len(toks) == 2:
+                        try:
+                            if "10<sup>" in toks[1]:
+                                base_power = re.findall(r'([+-]?\d+)', toks[1])
+                                factor = "e" + base_power[1]
+                                toks[0] += factor
+                                if a == "electrical_resistivity":
+                                    unit = "ohm m"
+                                elif a == "coefficient_of_linear_thermal_expansion":
+                                    unit = "K^-1"
+                                else:
+                                    unit = toks[1]
+                                val = FloatWithUnit(toks[0], unit)
+                            else:
+                                unit = toks[1].replace("<sup>", "^").replace(
+                                    "</sup>", "").replace("&Omega;",
+                                                          "ohm")
+                                units = Unit(unit)
+                                if set(units.keys()).issubset(SUPPORTED_UNIT_NAMES):
+                                    val = FloatWithUnit(toks[0], unit)
+                        except ValueError as ex:
+                            # Ignore error. val will just remain a string.
+                            pass
             setattr(self, a, val)
         if str(d.get("Atomic radius", "no data")).startswith("no data"):
             self.atomic_radius = None
@@ -571,9 +601,9 @@ class Element(Enum):
         """
         z = self.Z
         total = 0
-        if 57 <= z <= 70:
+        if 57 <= z <= 71:
             return 8
-        elif 89 <= z <= 102:
+        elif 89 <= z <= 103:
             return 9
 
         for i in range(len(_pt_row_sizes)):
@@ -608,7 +638,7 @@ class Element(Enum):
 
         if (z - 54) % 32 == 0:
             return 18
-        elif (z - 54) % 32 >= 17:
+        elif (z - 54) % 32 >= 18:
             return (z - 54) % 32 - 14
         else:
             return (z - 54) % 32
@@ -621,6 +651,8 @@ class Element(Enum):
         block = ""
         if (self.is_actinoid or self.is_lanthanoid) and self.Z not in [71, 103]:
             block = "f"
+        elif self.is_actinoid or self.is_lanthanoid:
+            block = "d"
         elif self.group in [1, 2]:
             block = "s"
         elif self.group in range(13, 19):
@@ -628,7 +660,7 @@ class Element(Enum):
         elif self.group in range(3, 13):
             block = "d"
         else:
-            print("unable to determine block")
+            raise ValueError("unable to determine block")
         return block
 
     @property
@@ -1174,78 +1206,6 @@ class DummySpecie(Specie):
         else:
             output += formula_double_format(-self._oxi_state) + "-"
         return output
-
-
-@deprecated(message="PeriodicTable itself is now pretty useless now that "
-                    "Element is an Enum. You can simply iterate over all "
-                    "elements using for el in Element. print_periodic_table "
-                    "functionality has been moved to a staticmethod in "
-                    "Element. This class will be removed in pymatgen 4.0.")
-class PeriodicTable(object):
-    """
-    A Periodic table singleton class. This class contains methods on the
-    collection of all known elements. For example, printing all elements, etc.
-    """
-
-    def __init__(self):
-        """ Implementation of the singleton interface """
-        self._all_elements = dict()
-        for sym in _pt_data.keys():
-            self._all_elements[sym] = Element(sym)
-
-    @property
-    def all_symbols(self):
-        """tuple with element symbols ordered by Z."""
-        return sorted(self._all_elements.keys(), key=lambda s: Element(s).Z)
-
-    def __getattr__(self, name):
-        return self._all_elements[name]
-
-    def __iter__(self):
-        for sym in self.all_symbols:
-            if sym is not None:
-                yield self._all_elements[sym]
-
-    def __getitem__(self, Z_or_slice):
-        try:
-            if isinstance(Z_or_slice, slice):
-                return [Element.from_Z(z) for z in list(range(
-                        len(self.all_symbols)))[Z_or_slice]]
-            else:
-                return Element.from_Z(Z_or_slice)
-        except Exception as ex:
-            raise IndexError("Z_or_slice: %s" % str(Z_or_slice))
-
-    @property
-    def all_elements(self):
-        """
-        List of all known elements as Element objects.
-        """
-        return self._all_elements.values()
-
-    def print_periodic_table(self, filter_function=None):
-        """
-        A pretty ASCII printer for the periodic table, based on some
-        filter_function.
-
-        Args:
-            filter_function: A filtering function taking an Element as input
-                and returning a boolean. For example, setting
-                filter_function = lambda el: el.X > 2 will print a periodic
-                table containing only elements with electronegativity > 2.
-        """
-        for row in range(1, 10):
-            rowstr = []
-            for group in range(1, 19):
-                try:
-                    el = Element.from_row_and_group(row, group)
-                except ValueError:
-                    el = None
-                if el and ((not filter_function) or filter_function(el)):
-                    rowstr.append("{:3s}".format(el.symbol))
-                else:
-                    rowstr.append("   ")
-            print(" ".join(rowstr))
 
 
 def get_el_sp(obj):

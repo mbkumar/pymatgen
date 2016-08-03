@@ -41,7 +41,7 @@ import logging
 
 import numpy as np
 from monty.fractions import lcm
-from monty.fractions import fractions
+import fractions
 
 from six.moves import reduce
 
@@ -151,7 +151,6 @@ class EnumlibAdaptor(object):
         documentation for details.
         """
         coord_format = "{:.6f} {:.6f} {:.6f}"
-
         # Using symmetry finder, get the symmetrically distinct sites.
         fitter = SpacegroupAnalyzer(self.structure, self.symm_prec)
         symmetrized_structure = fitter.get_symmetrized_structure()

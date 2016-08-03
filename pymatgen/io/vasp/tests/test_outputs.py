@@ -16,7 +16,7 @@ __maintainer__ = "Shyue Ping Ong"
 __email__ = "shyue@mit.edu"
 __date__ = "Jul 16, 2012"
 
-import unittest
+import unittest2 as unittest
 import os
 import json
 import numpy as np
@@ -54,6 +54,10 @@ class VasprunTest(unittest.TestCase):
             self.assertAlmostEqual(v.final_energy, -269.00551374)
             self.assertTrue(issubclass(w[-1].category,
                                        UserWarning))
+
+    def test_vdw(self):
+        v = Vasprun(os.path.join(test_dir, "vasprun.xml.vdw"))
+        self.assertAlmostEqual(v.final_energy, -9.78310677)
 
     def test_properties(self):
 
@@ -148,10 +152,8 @@ class VasprunTest(unittest.TestCase):
 
         self.assertTrue(vasprun_ggau.is_hubbard)
         self.assertEqual(vasprun_ggau.hubbards["Fe"], 4.3)
-        self.assertAlmostEqual(vasprun_ggau.projected_eigenvalues[(Spin.up, 0,
-                                                                   0, 96,
-                                                                   Orbital.s)],
-                               0.0032)
+        self.assertAlmostEqual(vasprun_ggau.projected_eigenvalues[
+                                   (1, 0, 0, 96, Orbital.s)], 0.0032)
         d = vasprun_ggau.as_dict()
         self.assertEqual(d["elements"], ["Fe", "Li", "O", "P"])
         self.assertEqual(d["nelements"], 4)
@@ -227,9 +229,42 @@ class VasprunTest(unittest.TestCase):
         (gap, cbm, vbm, direct) = v.eigenvalue_band_properties
         self.assertFalse(direct)
 
+    def test_force_constants(self):
+        vasprun_fc = Vasprun(os.path.join(test_dir, "vasprun.xml.dfpt.phonon"),
+                             parse_potcar_file=False)
+        fc_ans =[[-0.00184451, -0., -0.],
+              [-0. , -0.00933824, -0.03021279],
+              [-0., -0.03021279,  0.01202547]]
+        nm_ans = [[ 0.0884346, -0.08837289, -0.24995639],
+                   [-0.0884346,  0.08837289,  0.24995639],
+                   [ 0.15306645, -0.05105771, -0.14441306],
+                   [-0.15306645,  0.05105771,  0.14441306],
+                   [-0.0884346,  0.08837289,  0.24995639],
+                   [ 0.0884346, -0.08837289, -0.24995639],
+                   [-0.15306645,  0.05105771,  0.14441306],
+                   [ 0.15306645, -0.05105771, -0.14441306],
+                   [-0.0884346,  0.08837289,  0.24995639],
+                   [ 0.0884346, -0.08837289, -0.24995639],
+                   [-0.15306645,  0.05105771,  0.14441306],
+                   [ 0.15306645, -0.05105771, -0.14441306],
+                   [ 0.0884346, -0.08837289, -0.24995639],
+                   [-0.0884346,  0.08837289,  0.24995639],
+                   [ 0.15306645, -0.05105771, -0.14441306],
+                   [-0.15306645,  0.05105771,  0.14441306]]
+        nm_eigenval_ans = [-0.59067079, -0.59067079, -0.59067003, -0.59067003,
+                           -0.59067003, -0.59067003, -0.585009, -0.585009,
+                           -0.58500895, -0.58500883, -0.5062956 , -0.5062956]
+        self.assertEqual(vasprun_fc.force_constants.shape, (16, 16, 3, 3))
+        self.assertTrue(np.allclose(vasprun_fc.force_constants[8, 9], fc_ans))
+        self.assertEqual(vasprun_fc.normalmode_eigenvals.size, 48)
+        self.assertTrue(np.allclose(vasprun_fc.normalmode_eigenvals[17:29],
+                                    nm_eigenval_ans))
+        self.assertEqual(vasprun_fc.normalmode_eigenvecs.shape, (48, 16, 3))
+        self.assertTrue(np.allclose(vasprun_fc.normalmode_eigenvecs[33], nm_ans))
+
     def test_Xe(self):
         vr = Vasprun(os.path.join(test_dir, 'vasprun.xml.xe'), parse_potcar_file=False)
-        self.assertEquals(vr.atomic_symbols, ['Xe'])
+        self.assertEqual(vr.atomic_symbols, ['Xe'])
 
     def test_invalid_element(self):
         self.assertRaises(ValueError, Vasprun,
@@ -341,6 +376,14 @@ class VasprunTest(unittest.TestCase):
                                                {"titel": "PAW_PBE P 17Jan2003", "hash": None},
                                                {"titel": "PAW_PBE O 08Apr2002", "hash": None}])
 
+    def test_parsing_chemical_shift_calculations(self):
+        filepath = os.path.join(test_dir, "nmr", "cs", "basic",
+                                'vasprun.xml.chemical_shift.scstep')
+        vasprun = Vasprun(filepath)
+        nestep = len(vasprun.ionic_steps[-1]['electronic_steps'])
+        self.assertEqual(nestep, 10)
+        self.assertTrue(vasprun.converged)
+
 
 class OutcarTest(unittest.TestCase):
 
@@ -381,6 +424,8 @@ class OutcarTest(unittest.TestCase):
 
             self.assertIsNotNone(outcar.as_dict())
 
+            self.assertFalse(outcar.lepsilon)
+
         filepath = os.path.join(test_dir, 'OUTCAR.stopped')
         outcar = Outcar(filepath)
         self.assertTrue(outcar.is_stopped)
@@ -389,9 +434,7 @@ class OutcarTest(unittest.TestCase):
             filepath = os.path.join(test_dir, f)
             outcar = Outcar(filepath)
 
-            outcar.read_lepsilon()
-            outcar.read_lepsilon_ionic()
-
+            self.assertTrue(outcar.lepsilon)
             self.assertAlmostEqual(outcar.dielectric_tensor[0][0], 3.716432)
             self.assertAlmostEqual(outcar.dielectric_tensor[0][1], -0.20464)
             self.assertAlmostEqual(outcar.dielectric_tensor[1][2], -0.20464)
@@ -407,15 +450,31 @@ class OutcarTest(unittest.TestCase):
             self.assertAlmostEqual(outcar.born[0][1][2], -0.385)
             self.assertAlmostEqual(outcar.born[1][2][0], 0.36465)
 
-    def test_elastic_tensor(self):
+    def test_dielectric(self):
+        filepath = os.path.join(test_dir, "OUTCAR.dielectric")
+        outcar = Outcar(filepath)
+        outcar.read_corrections()
+        self.assertAlmostEqual(outcar.data["dipol_quadrupol_correction"], 0.03565)
+        self.assertAlmostEqual(outcar.final_energy, -797.46760559)
+
+    def test_read_elastic_tensor(self):
         filepath = os.path.join(test_dir, "OUTCAR.total_tensor.Li2O.gz")
         outcar = Outcar(filepath)
 
-        elastic_tensor = outcar.elastic_tensor
+        outcar.read_elastic_tensor()
 
-        self.assertAlmostEqual(elastic_tensor[0][0], 1986.3391)
-        self.assertAlmostEqual(elastic_tensor[0][1], 187.8324)
-        self.assertAlmostEqual(elastic_tensor[3][3], 586.3034)
+        self.assertAlmostEqual(outcar.data["elastic_tensor"][0][0], 1986.3391)
+        self.assertAlmostEqual(outcar.data["elastic_tensor"][0][1], 187.8324)
+        self.assertAlmostEqual(outcar.data["elastic_tensor"][3][3], 586.3034)
+
+    def test_read_piezo_tensor(self):
+        filepath = os.path.join(test_dir, "OUTCAR.lepsilon.gz")
+        outcar = Outcar(filepath)
+
+        outcar.read_piezo_tensor()
+        self.assertAlmostEqual(outcar.data["piezo_tensor"][0][0], 0.52799)
+        self.assertAlmostEqual(outcar.data["piezo_tensor"][1][3], 0.35998)
+        self.assertAlmostEqual(outcar.data["piezo_tensor"][2][5], 0.35997)
 
     def test_core_state_eigen(self):
         filepath = os.path.join(test_dir, "OUTCAR.CL")
@@ -443,6 +502,59 @@ class OutcarTest(unittest.TestCase):
         self.assertAlmostEqual(outcar.total_mag, 8.2e-06)
 
         self.assertIsNotNone(outcar.as_dict())
+
+    def test_chemical_shifts(self):
+        filename = os.path.join(test_dir, "nmr", "cs", "core.diff",
+                                "hydromagnesite", "OUTCAR")
+        outcar = Outcar(filename)
+        outcar.read_chemical_shifts()
+        expected_chemical_shifts = [[191.9974, 69.5232, 0.6342],
+                                    [195.0808, 68.183, 0.833],
+                                    [192.0389, 69.5762, 0.6329],
+                                    [195.0844, 68.1756, 0.8336],
+                                    [192.005, 69.5289, 0.6339],
+                                    [195.0913, 68.1859, 0.833],
+                                    [192.0237, 69.565, 0.6333],
+                                    [195.0788, 68.1733, 0.8337]]
+
+        self.assertAlmostEqual(len(outcar.data["chemical_shifts"]["valence_only"][20: 28]),
+                               len(expected_chemical_shifts))
+        for c1, c2 in zip(outcar.data["chemical_shifts"]["valence_only"][20: 28],
+                          expected_chemical_shifts):
+            for x1, x2 in zip(list(c1.maryland_values), c2):
+                self.assertAlmostEqual(x1, x2, places=5)
+
+    def test_chemical_shifts_with_different_core_contribution(self):
+        filename = os.path.join(test_dir, "nmr", "cs", "core.diff",
+                                "core.diff.chemical.shifts.OUTCAR")
+        outcar = Outcar(filename)
+        outcar.read_chemical_shifts()
+        c_vo = outcar.data["chemical_shifts"]["valence_only"][7].maryland_values
+        for x1, x2 in zip(list(c_vo),
+                          [198.7009, 73.7484, 1.0000]):
+            self.assertAlmostEqual(x1, x2)
+        c_vc = outcar.data["chemical_shifts"]["valence_and_core"][7].maryland_values
+        for x1, x2 in zip(list(c_vc),
+                          [-1.9406, 73.7484, 1.0000]):
+            self.assertAlmostEqual(x1, x2)
+
+    def test_nmr_efg(self):
+        filename = os.path.join(test_dir, "nmr", "efg", "AlPO4", "OUTCAR")
+        outcar = Outcar(filename)
+        outcar.read_nmr_efg()
+        expected_efg = [{'eta': 0.465, 'nuclear_quadrupole_moment': 146.6, 'cq': -5.573},
+                        {'eta': 0.465, 'nuclear_quadrupole_moment': 146.6, 'cq': -5.573},
+                        {'eta': 0.137, 'nuclear_quadrupole_moment': 146.6, 'cq': 6.327},
+                        {'eta': 0.137, 'nuclear_quadrupole_moment': 146.6, 'cq': 6.327},
+                        {'eta': 0.112, 'nuclear_quadrupole_moment': 146.6, 'cq': -7.453},
+                        {'eta': 0.112, 'nuclear_quadrupole_moment': 146.6, 'cq': -7.453},
+                        {'eta': 0.42, 'nuclear_quadrupole_moment': 146.6, 'cq': -5.58},
+                        {'eta': 0.42, 'nuclear_quadrupole_moment': 146.6, 'cq': -5.58}]
+        self.assertEqual(len(outcar.data["efg"][2:10]), len(expected_efg))
+        for e1, e2 in zip(outcar.data["efg"][2:10], expected_efg):
+            for k in e1.keys():
+                self.assertAlmostEqual(e1[k], e2[k], places=5)
+
 
 class BSVasprunTest(unittest.TestCase):
 
@@ -594,6 +706,7 @@ class DynmatTest(unittest.TestCase):
             d.data[4][2]['dynmat'][3], [0.055046, -0.298080, 0.]
         ))
         # TODO: test get_phonon_frequencies once cross-checked
+
 
 if __name__ == "__main__":
     unittest.main()
