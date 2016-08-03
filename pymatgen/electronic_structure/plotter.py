@@ -310,7 +310,7 @@ class DosMultiPlotter(object):
         """
         return jsanitize(self._doses)
 
-    def get_plot(self, xlim=None, ylim=None):
+    def get_plot(self, xlim=None, ylim=None, textsize=None):
         """
         Get a matplotlib plot showing the DOS.
 
@@ -324,6 +324,9 @@ class DosMultiPlotter(object):
         from pymatgen.util.plotting_utils import get_publication_quality_plot
         ncolors = 4 # Corresponding to spdf
         colors = brewer2mpl.get_map('Set1', 'qualitative', ncolors).mpl_colors
+        if not textsize:
+            textsize = 20
+        print ('final textsize inside get_plot', textsize)
 
         y = None
         w, h = figaspect(0.25*len(self._doses))
@@ -370,7 +373,8 @@ class DosMultiPlotter(object):
                 ax1 = ax
             else:
                 ax = f.add_subplot(len(self._doses),1,cnt, sharex=ax1)
-            ax.set_title(k,loc='right')
+            ax.set_title(k, loc='right', size=textsize)
+            ax.yaxis.set_major_locator(plt.NullLocator())
             for i, key in enumerate(keys):
                 x = []
                 y = []
@@ -386,10 +390,10 @@ class DosMultiPlotter(object):
                 allpts.extend(list(zip(x, y)))
                 if self.stack:
                     ax.fill(x, y, color=colors[i % ncolors],
-                             label=str(key))
+                             label=str(key).lower())
                 else:
                     ppl.plot(ax,x, y, color=colors[i % ncolors],
-                             label=str(key),linewidth=1.5)
+                             label=str(key).lower(),linewidth=3.0)
                 if not self.zero_at_efermi:
                     if not ylim:
                         ylim = plt.ylim()
@@ -397,7 +401,7 @@ class DosMultiPlotter(object):
                               self._doses[k][key]['efermi']], ylim,
                               #color=colors[i % ncolors],
                               'k--',
-                              linestyle='--', linewidth=1.5)
+                              linestyle='--', linewidth=3.0)
 
             if xlim:
                 ax.set_xlim(xlim)
@@ -408,6 +412,9 @@ class DosMultiPlotter(object):
                 relevanty = [p[1] for p in allpts
                              if xlim[0] < p[0] < xlim[1]]
                 ax.set_ylim((min(relevanty), max(relevanty)))
+            # Change tick size
+            for tick in ax.xaxis.get_major_ticks():
+                tick.label.set_visible(False) 
 
             if self.zero_at_efermi:
                 ylim = ax.ylim()
@@ -415,17 +422,24 @@ class DosMultiPlotter(object):
 
             cnt += 1
 
-        # For the last plot set legend and xlabel
-        ax.set_xlabel('Energies (eV)')
-        #f.ylabel('Density of states')
+        # For the last plot set ticks visible, legend and xlabel
+        for tick in ax.xaxis.get_major_ticks():
+            tick.label.set_visible(True) 
+            tick.label.set_fontsize(textsize) 
+        ax.set_xlabel('Energies (eV)', size=textsize)
         ax.legend()
-        #leg = plt.gca().get_legend()
-        #ltext = leg.get_texts()  # all the text.Text instance in the legend
-        #plt.setp(ltext, fontsize=30)
+        #ax.set_ylabel('Density of states', size=textsize)
+        #fig.text(0.5, 0.04, 'common X', ha='center')
+        #f.text(0.00, 0.5, 'Density of states', va='center', 
+        #       rotation='vertical', size=textsize)
+        leg = plt.gca().get_legend()
+        ltext = leg.get_texts()  # all the text.Text instance in the legend
+        plt.setp(ltext, fontsize=textsize)
         plt.tight_layout()
         return plt
 
-    def save_plot(self, filename, img_format="eps", xlim=None, ylim=None):
+    def save_plot(self, filename, img_format="eps", xlim=None, ylim=None,
+                  textsize=None):
         """
         Save matplotlib plot to a file.
 
@@ -436,7 +450,7 @@ class DosMultiPlotter(object):
                 determination.
             ylim: Specifies the y-axis limits.
         """
-        plt = self.get_plot(xlim, ylim)
+        plt = self.get_plot(xlim, ylim, textsize=textsize)
         plt.savefig(filename, format=img_format)
 
     def show(self, xlim=None, ylim=None):

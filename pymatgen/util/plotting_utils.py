@@ -31,7 +31,7 @@ def get_publication_quality_plot(width=8, height=None, plt=None):
     Returns:
         Matplotlib plot object with properly sized fonts.
     """
-    ticksize = int(width * 2.5)
+    ticksize = int(width * 3)
 
     golden_ratio = (math.sqrt(5) - 1.0) / 2.0
 
@@ -48,9 +48,9 @@ def get_publication_quality_plot(width=8, height=None, plt=None):
     plt.yticks(fontsize=ticksize)
 
     axes = plt.gca()
-    axes.set_title(axes.get_title(), size=width * 4)
+    axes.set_title(axes.get_title(), size=width * 5)
 
-    labelsize = int(width * 3)
+    labelsize = int(width * 7)
 
     axes.set_xlabel(axes.get_xlabel(), size=labelsize)
     axes.set_ylabel(axes.get_ylabel(), size=labelsize)
