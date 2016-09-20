@@ -23,6 +23,7 @@ import numpy as np
 
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.io.vasp.inputs import Poscar
+from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, \
     PointGroupAnalyzer, cluster_sites
 from pymatgen.io.cif import CifParser
@@ -65,7 +66,7 @@ class SpacegroupAnalyzerTest(PymatgenTest):
     def test_magnetic(self):
         lfp = PymatgenTest.get_structure("LiFePO4")
         sg = SpacegroupAnalyzer(lfp, 0.1)
-        self.assertEqual(sg.get_spacegroup_symbol(), "Pnma")
+        self.assertEqual(sg.get_space_group_symbol(), "Pnma")
         magmoms = [0] * len(lfp)
         magmoms[4] = 1
         magmoms[5] = -1
@@ -73,27 +74,27 @@ class SpacegroupAnalyzerTest(PymatgenTest):
         magmoms[7] = -1
         lfp.add_site_property("magmom", magmoms)
         sg = SpacegroupAnalyzer(lfp, 0.1)
-        self.assertEqual(sg.get_spacegroup_symbol(), "Pnma")
+        self.assertEqual(sg.get_space_group_symbol(), "Pnma")
 
     def test_get_space_symbol(self):
-        self.assertEqual(self.sg.get_spacegroup_symbol(), "Pnma")
-        self.assertEqual(self.disordered_sg.get_spacegroup_symbol(),
+        self.assertEqual(self.sg.get_space_group_symbol(), "Pnma")
+        self.assertEqual(self.disordered_sg.get_space_group_symbol(),
                          "P4_2/nmc")
-        self.assertEqual(self.sg3.get_spacegroup_symbol(), "Pnma")
-        self.assertEqual(self.sg4.get_spacegroup_symbol(), "P6_3/mmc")
+        self.assertEqual(self.sg3.get_space_group_symbol(), "Pnma")
+        self.assertEqual(self.sg4.get_space_group_symbol(), "P6_3/mmc")
 
     def test_get_space_number(self):
-        self.assertEqual(self.sg.get_spacegroup_number(), 62)
-        self.assertEqual(self.disordered_sg.get_spacegroup_number(), 137)
-        self.assertEqual(self.sg4.get_spacegroup_number(), 194)
+        self.assertEqual(self.sg.get_space_group_number(), 62)
+        self.assertEqual(self.disordered_sg.get_space_group_number(), 137)
+        self.assertEqual(self.sg4.get_space_group_number(), 194)
 
     def test_get_hall(self):
         self.assertEqual(self.sg.get_hall(), '-P 2ac 2n')
         self.assertEqual(self.disordered_sg.get_hall(), 'P 4n 2n -1n')
 
     def test_get_pointgroup(self):
-        self.assertEqual(self.sg.get_point_group(), 'mmm')
-        self.assertEqual(self.disordered_sg.get_point_group(), '4/mmm')
+        self.assertEqual(self.sg.get_point_group_symbol(), 'mmm')
+        self.assertEqual(self.disordered_sg.get_point_group_symbol(), '4/mmm')
 
     def test_get_symmetry_dataset(self):
         ds = self.sg.get_symmetry_dataset()
@@ -113,6 +114,10 @@ class SpacegroupAnalyzerTest(PymatgenTest):
             symmops = sg.get_symmetry_operations(True)
             latt = structure.lattice
             for fop, op, pgop in zip(fracsymmops, symmops, pgops):
+                # translation vector values should all be 0 or 0.5
+                t = fop.translation_vector * 2
+                self.assertArrayAlmostEqual(t - np.round(t), 0)
+
                 self.assertArrayAlmostEqual(fop.rotation_matrix,
                                             pgop.rotation_matrix)
                 for site in structure:
@@ -340,7 +345,8 @@ class SpacegroupTest(unittest.TestCase):
     def setUp(self):
         p = Poscar.from_file(os.path.join(test_dir, 'POSCAR'))
         self.structure = p.structure
-        self.sg1 = SpacegroupAnalyzer(self.structure, 0.001).get_spacegroup()
+        self.sg1 = SpacegroupAnalyzer(self.structure,
+                                      0.001).get_space_group_operations()
 
     def test_are_symmetrically_equivalent(self):
         sites1 = [self.structure[i] for i in [0, 1]]
@@ -476,11 +482,43 @@ class PointGroupAnalyzerTest(PymatgenTest):
         # 1.7 can't find symmetry either, but at least doesn't kill python
         s = Structure.from_file(os.path.join(test_dir, 'POSCAR.tricky_symmetry'))
         sa = SpacegroupAnalyzer(s, 0.1)
-        sa.get_spacegroup_symbol()
-        sa.get_spacegroup_number()
-        sa.get_point_group()
+        sa.get_space_group_symbol()
+        sa.get_space_group_number()
+        sa.get_point_group_symbol()
         sa.get_crystal_system()
         sa.get_hall()
+
+    def test_get_kpoint_weights(self):
+        for name in ["SrTiO3", "LiFePO4", "Graphite"]:
+            s = PymatgenTest.get_structure(name)
+            a = SpacegroupAnalyzer(s)
+            ir_mesh = a.get_ir_reciprocal_mesh((4, 4, 4))
+            weights = [i[1] for i in ir_mesh]
+            weights = np.array(weights) / sum(weights)
+            for i, w in zip(weights, a.get_kpoint_weights([i[0] for i in
+                                                           ir_mesh])):
+                self.assertAlmostEqual(i, w)
+
+        for name in ["SrTiO3", "LiFePO4", "Graphite"]:
+            s = PymatgenTest.get_structure(name)
+            a = SpacegroupAnalyzer(s)
+            ir_mesh = a.get_ir_reciprocal_mesh((1, 2, 3))
+            weights = [i[1] for i in ir_mesh]
+            weights = np.array(weights) / sum(weights)
+            for i, w in zip(weights, a.get_kpoint_weights([i[0] for i in
+                                                           ir_mesh])):
+                self.assertAlmostEqual(i, w)
+
+        v = Vasprun(os.path.join(test_dir, "vasprun.xml"))
+        a = SpacegroupAnalyzer(v.final_structure)
+        wts = a.get_kpoint_weights(v.actual_kpoints)
+
+        for w1, w2 in zip(v.actual_kpoints_weights, wts):
+            self.assertAlmostEqual(w1, w2)
+
+        kpts = [[0, 0, 0], [0.15, 0.15, 0.15], [0.2, 0.2, 0.2]]
+        self.assertRaises(ValueError, a.get_kpoint_weights, kpts)
+
 
 class FuncTest(unittest.TestCase):
 

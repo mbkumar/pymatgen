@@ -370,9 +370,13 @@ class CifParser(object):
                                "_space_group_symop_operation_xyz",
                                "_space_group_symop_operation_xyz_"]:
             if data.data.get(symmetry_label):
+                xyz = data.data.get(symmetry_label)
+                if isinstance(xyz, six.string_types):
+                    warnings.warn("A 1-line symmetry op P1 CIF is detected!")
+                    xyz = [xyz]
                 try:
                     symops = [SymmOp.from_xyz_string(s)
-                              for s in data.data.get(symmetry_label)]
+                              for s in xyz]
                     break
                 except ValueError:
                     continue
@@ -678,8 +682,8 @@ class CifWriter(object):
         spacegroup = ("P 1", 1)
         if symprec is not None:
             sf = SpacegroupAnalyzer(struct, symprec)
-            spacegroup = (sf.get_spacegroup_symbol(),
-                          sf.get_spacegroup_number())
+            spacegroup = (sf.get_space_group_symbol(),
+                          sf.get_space_group_number())
             # Needs the refined struture when using symprec. This converts
             # primitive to conventional structures, the standard for CIF.
             struct = sf.get_refined_structure()

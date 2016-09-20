@@ -566,7 +566,7 @@ class IStructure(SiteCollection, MSONable):
         m = Mass(self.composition.weight, "amu")
         return m.to("g") / (self.volume * Length(1, "ang").to("cm") ** 3)
 
-    def get_spacegroup_info(self, symprec=1e-2, angle_tolerance=5.0):
+    def get_space_group_info(self, symprec=1e-2, angle_tolerance=5.0):
         """
         Convenience method to quickly get the spacegroup of a structure.
 
@@ -583,7 +583,7 @@ class IStructure(SiteCollection, MSONable):
         from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
         a = SpacegroupAnalyzer(self, symprec=symprec,
                                angle_tolerance=angle_tolerance)
-        return a.get_spacegroup_symbol(), a.get_spacegroup_number()
+        return a.get_space_group_symbol(), a.get_space_group_number()
 
     def matches(self, other, **kwargs):
         """
@@ -1323,7 +1323,7 @@ class IStructure(SiteCollection, MSONable):
 
         if fmt == "cif" or fnmatch(fname, "*.cif*"):
             writer = CifWriter(self)
-        elif fmt == "poscar" or fnmatch(fname, "POSCAR*"):
+        elif fmt == "poscar" or fnmatch(fname, "*POSCAR*"):
             writer = Poscar(self)
         elif fmt == "cssr" or fnmatch(fname.lower(), "*.cssr*"):
             writer = Cssr(self)
@@ -1443,7 +1443,7 @@ class IStructure(SiteCollection, MSONable):
             return cls.from_str(contents, fmt="cif",
                                 primitive=primitive, sort=sort,
                                 merge_tol=merge_tol)
-        elif fnmatch(fname, "POSCAR*") or fnmatch(fname, "CONTCAR*"):
+        elif fnmatch(fname, "*POSCAR*") or fnmatch(fname, "*CONTCAR*"):
             s = cls.from_str(contents, fmt="poscar",
                              primitive=primitive, sort=sort,
                              merge_tol=merge_tol)
@@ -2526,11 +2526,19 @@ class Structure(IStructure, collections.MutableSequence):
         """
         self.modify_lattice(self._lattice.scale(volume))
 
-    def merge_sites(self, tol=0.01):
+    def merge_sites(self, tol=0.01, mode="sum"):
         """
         Merges sites (adding occupancies) within tol of each other.
-        Removes site properties
+        Removes site properties.
+
+        Args:
+            tol (float): Tolerance for distance to merge sites.
+            mode (str): Two modes supported. "delete" means duplicate sites are
+                deleted. "sum" means the occupancies are summed for the sites.
+                Only first letter is considered.
+
         """
+        mode = mode.lower()[0]
         from scipy.spatial.distance import squareform
         from scipy.cluster.hierarchy import fcluster, linkage
 
@@ -2544,7 +2552,9 @@ class Structure(IStructure, collections.MutableSequence):
             species = self[inds[0]].species_and_occu
             coords = self[inds[0]].frac_coords
             for n, i in enumerate(inds[1:]):
-                species += self[i].species_and_occu
+                sp = self[i].species_and_occu
+                if mode == "s":
+                    species += sp
                 offset = self[i].frac_coords - coords
                 coords += ((offset - np.round(offset)) / (n + 2)).astype(
                     coords.dtype)
@@ -2943,7 +2953,6 @@ class StructureError(Exception):
     Raised when the structure has problems, e.g., atoms that are too close.
     """
     pass
-
 
 with open(os.path.join(os.path.dirname(__file__),
                        "func_groups.json"), "rt") as f:

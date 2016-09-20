@@ -4,6 +4,21 @@
 
 from __future__ import division, unicode_literals
 
+import unittest2 as unittest
+import os
+
+from pymatgen import SETTINGS
+from pymatgen.matproj.rest import MPRester, MPRestError
+from pymatgen.core.periodic_table import Element
+from pymatgen.core.structure import Structure, Composition
+from pymatgen.entries.computed_entries import ComputedEntry
+from pymatgen.electronic_structure.dos import CompleteDos
+from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
+from pymatgen.entries.compatibility import MaterialsProjectCompatibility
+from pymatgen.phasediagram.maker import PhaseDiagram
+from pymatgen.phasediagram.analyzer import PDAnalyzer
+from pymatgen.io.cif import CifParser
+
 """
 Created on Jun 9, 2012
 """
@@ -16,28 +31,12 @@ __maintainer__ = "Shyue Ping Ong"
 __email__ = "shyuep@gmail.com"
 __date__ = "Jun 9, 2012"
 
-import unittest2 as unittest
-import os
-
-from pymatgen.matproj.rest import MPRester, MPRestError
-from pymatgen.core.periodic_table import Element
-from pymatgen.core.structure import Structure, Composition
-from pymatgen.entries.computed_entries import ComputedEntry
-from pymatgen.electronic_structure.dos import CompleteDos
-from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
-from pymatgen.entries.compatibility import MaterialsProjectCompatibility
-from pymatgen.phasediagram.maker import PhaseDiagram
-from pymatgen.phasediagram.analyzer import PDAnalyzer
-from pymatgen.io.cif import CifParser
-
-
-import random
 
 test_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..",
                         'test_files')
 
 
-@unittest.skipIf("MAPI_KEY" not in os.environ,
+@unittest.skipIf("MAPI_KEY" not in SETTINGS,
                  "MAPI_KEY environment variable not set.")
 class MPResterTest(unittest.TestCase):
 
@@ -80,6 +79,7 @@ class MPResterTest(unittest.TestCase):
 
         props = ['structure', 'initial_structure', 'final_structure', 'entry']
         for prop in props:
+            print(prop)
             obj = self.rester.get_data("mp-19017", prop=prop)[0][prop]
             if prop.endswith("structure"):
                 self.assertIsInstance(obj, Structure)

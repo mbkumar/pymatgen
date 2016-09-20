@@ -184,8 +184,8 @@ class Vasprun(MSONable):
             eigenvalues. Defaults to False. Set to True to obtain projected
             eigenvalues. **Note that this can take an extreme amount of time
             and memory.** So use this wisely.
-        parse_potcar_file (bool/str): Whether to parse the potcar file to read the
-            potcar hashes for the potcar_spec attribute. Defaults to True,
+        parse_potcar_file (bool/str): Whether to parse the potcar file to read
+            the potcar hashes for the potcar_spec attribute. Defaults to True,
             where no hashes will be determined and the potcar_spec dictionaries
             will read {"symbol": ElSymbol, "hash": None}. By Default, looks in
             the same directory as the vasprun.xml, with same extensions as
@@ -275,13 +275,13 @@ class Vasprun(MSONable):
 
     .. attribute:: epsilon_static_wolfe
 
-        The static part of the dielectric constant without any local field effects.
-        Present when it's a DFPT run (LEPSILON=TRUE)
+        The static part of the dielectric constant without any local field
+        effects. Present when it's a DFPT run (LEPSILON=TRUE)
 
     .. attribute:: epsilon_ionic
 
-        The ionic part of the static dielectric constant. Present when it's a DFPT run
-        (LEPSILON=TRUE) and IBRION=5, 6, 7 or 8
+        The ionic part of the static dielectric constant. Present when it's a
+        DFPT run (LEPSILON=TRUE) and IBRION=5, 6, 7 or 8
 
     .. attribute:: nionic_steps
 
@@ -301,7 +301,7 @@ class Vasprun(MSONable):
 
     .. attribute:: normalmode_eigenvecs
 
-        Normal mode eigen vectoes.
+        Normal mode eigen vectors.
         3D numpy array of shape (3*natoms, natoms, 3).
 
     **Vasp inputs**
@@ -699,34 +699,36 @@ class Vasprun(MSONable):
 
         kpoints = [np.array(self.actual_kpoints[i])
                    for i in range(len(self.actual_kpoints))]
-        dict_eigen = self.as_dict()['output']['eigenvalues']
-        dict_p_eigen = {}
-        if 'projected_eigenvalues' in self.as_dict()['output']:
-            dict_p_eigen = self.as_dict()['output']['projected_eigenvalues']
+        dout = self.as_dict()["output"]
+        dict_eigen = dout['eigenvalues']
+        dict_p_eigen = dout.get('projected_eigenvalues', {})
 
         p_eigenvals = defaultdict(list)
         eigenvals = defaultdict(list)
+
+        nkpts = len(kpoints)
+        has_peigen = len(dict_p_eigen) > 0
 
         neigenvalues = [len(v['1']) for v in dict_eigen.values()]
         min_eigenvalues = min(neigenvalues)
         for i in range(min_eigenvalues):
             eigenvals[Spin.up].append([dict_eigen[str(j)]['1'][i][0]
-                                       for j in range(len(kpoints))])
-            if len(dict_p_eigen) != 0:
+                                       for j in range(nkpts)])
+            if has_peigen:
                 p_eigenvals[Spin.up].append(
                     [{Orbital[orb]: dict_p_eigen[j]['1'][i][orb]
                       for orb in dict_p_eigen[j]['1'][i]}
-                     for j in range(len(kpoints))])
+                     for j in range(nkpts)])
         if "1" in dict_eigen["0"] and "-1" in dict_eigen["0"] \
                 and self.incar['ISPIN'] == 2:
             for i in range(min_eigenvalues):
                 eigenvals[Spin.down].append([dict_eigen[str(j)]['-1'][i][0]
-                                             for j in range(len(kpoints))])
-                if len(dict_p_eigen) != 0:
+                                             for j in range(nkpts)])
+                if has_peigen:
                     p_eigenvals[Spin.down].append(
                         [{Orbital[orb]: dict_p_eigen[j]['-1'][i][orb]
                           for orb in dict_p_eigen[j]['-1'][i]}
-                         for j in range(len(kpoints))]
+                         for j in range(nkpts)]
                     )
 
         # check if we have an hybrid band structure computation
@@ -747,7 +749,7 @@ class Vasprun(MSONable):
                     if self.actual_kpoints_weights[i] == 0.0:
                         start_bs_index = i
                         break
-                for i in range(len(kpoint_file.kpts)):
+                for i in range(start_bs_index, len(kpoint_file.kpts)):
                     if kpoint_file.labels[i] is not None:
                         labels_dict[kpoint_file.labels[i]] = \
                             kpoint_file.kpts[i]
@@ -1130,6 +1132,9 @@ class Vasprun(MSONable):
         proj_eigen = {}
         for s in root.findall("set"):
             spin = int(re.match("spin(\d+)", s.attrib["comment"]).group(1))
+
+            # Force spin to be +1 or -1
+            spin = 1 if spin == 1 else -1
             for kpt, ss in enumerate(s.findall("set")):
                 for band, sss in enumerate(ss.findall("set")):
                     for atom, data in enumerate(_parse_varray(sss)):
@@ -2061,13 +2066,25 @@ class Outcar(MSONable):
             line = foutcar.readline()
             while line != "":
                 line = foutcar.readline()
-                if "NIONS =" in line:
+                if "NIONS =" in line:   
                     natom = int(line.split("NIONS =")[1])
                     cl = [defaultdict(list) for i in range(natom)]
                 if "the core state eigen" in line:
-                    for iat in range(natom):
+                    iat = -1
+                    while line != "":
                         line = foutcar.readline()
-                        data = line.split()[1:]
+                        # don't know number of lines to parse without knowing
+                        # specific species, so stop parsing when we reach
+                        # "E-fermi" instead
+                        if "E-fermi" in line:
+                            break
+                        data = line.split()
+                        # data will contain odd number of elements if it is
+                        # the start of a new entry, or even number of elements
+                        # if it continues the previous entry
+                        if len(data) % 2 == 1:
+                            iat += 1 # started parsing a new ion
+                            data = data[1:] # remove element with ion number
                         for i in range(0, len(data), 2):
                             cl[iat][data[i]].append(float(data[i + 1]))
         return cl
@@ -2219,7 +2236,7 @@ class VolumetricData(object):
         ngrid_pts = 0
         data_count = 0
         poscar = None
-        with zopen(filename) as f:
+        with zopen(filename, "rt") as f:
             for line in f:
                 line = line.strip()
                 if read_dataset:

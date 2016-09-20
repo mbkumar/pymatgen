@@ -7,6 +7,7 @@ from __future__ import unicode_literals
 import unittest2 as unittest
 import tempfile
 from monty.tempfile import ScratchDir
+from monty.json import MontyDecoder
 
 from pymatgen.io.vasp.sets import *
 from pymatgen.io.vasp.inputs import Poscar, Incar, Kpoints
@@ -174,6 +175,11 @@ class MITMPRelaxSetTest(unittest.TestCase):
         kpoints = MPRelaxSet(self.structure).kpoints
         self.assertEqual(kpoints.kpts, [[2, 4, 6]])
         self.assertEqual(kpoints.style, Kpoints.supported_modes.Monkhorst)
+
+        kpoints = MPRelaxSet(self.structure, user_kpoints_settings={
+            "reciprocal_density": 1000}).kpoints
+        self.assertEqual(kpoints.kpts, [[6, 11, 13]])
+        self.assertEqual(kpoints.style, Kpoints.supported_modes.Gamma)
 
         kpoints = self.mitset.kpoints
         self.assertEqual(kpoints.kpts, [[2, 4, 6]])

@@ -12,9 +12,9 @@ dependencies:
   override:
     - easy_install -U setuptools
     - pip install -q numpy
-    - pip install -r requirements.txt
+    - pip install -r requirements.txt --upgrade
     - pip install -r requirements-optional.txt
-    - sudo apt-get install python-openbabel python-vtk
+    - sudo apt-get install python-openbabel python-vtk python3-tk
     - python setup.py develop
 test:
   override:
@@ -26,8 +26,8 @@ test:
         timeout: 720
     - coveralls
     # Some rudimentary command line tests for pmg
-    - pmg convert test_files/Li2O.cif POSCAR.pmg
-    - pmg convert POSCAR.pmg pmg.cif
+    - pmg structure --convert --filenames test_files/Li2O.cif POSCAR.pmg
+    - pmg structure --convert --filenames POSCAR.pmg pmg.cif
     - pmg analyze -d test_files
 deployment:
   py27:

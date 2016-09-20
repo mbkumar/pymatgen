@@ -1,8 +1,7 @@
 Change log
 ==========
 
-v4.2.0
+v4.3.1
 ------
-* Fix important bug in minimum image distance computation for very skewed cells.
-* Major refactoring of WulffShape code.
-* Misc bug fixes for elastic tensor and other codes.
+* Upgrade monty and spglib requirements for bug fixes.
+* Updates to feff support (Kiran).
