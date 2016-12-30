@@ -886,7 +886,7 @@ def solute_site_preference_finder(
         for j in range(n):
             for k in range(n):
                 if i == j and site_species[j] != site_species[k] and \
-                        site_species[i] != site_species:
+                        site_species[i] != site_species[k]:
                     dC[i,j,k] = 1
         for j in range(n+1):
             for k in range(n):
@@ -896,9 +896,10 @@ def solute_site_preference_finder(
         dC[n,n,k] = 1
     for k in range(n):
         for j in range(n):
-            if i != j:
-                if site_species[i] == site_species[k]:
-                    dC[i,j,k] = 0
+            for i in range(n):
+                if i != j:
+                    if site_species[j] == site_species[k]:
+                        dC[i,j,k] = 0
 
     for ind_map in specie_site_index_map:
         if ind_map[1]-ind_map[0] > 1:
@@ -1005,7 +1006,7 @@ def solute_site_preference_finder(
         for epi in range(n):
             sum_mu1 = sum([mu[site_mu_map[j]]*Integer(
                     dC[j,epi,p_r]) for j in range(n)])
-            sum_mu = sum_mu1 - mu[site_mu_map[n]]* dC[n,epi,p_r]
+            sum_mu = sum_mu1 + mu[site_mu_map[n]]*dC[n,epi,p_r]
             if p_r != epi and site_mu_map[p_r] == site_mu_map[epi]:
                 continue
             if dE[epi,p_r] not in used_dEs:
